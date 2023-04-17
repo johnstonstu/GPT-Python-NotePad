@@ -1,37 +1,64 @@
-from tkinter import *
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+from datetime import datetime
 
-# create a function to save the note to a file
+
 def save_note():
-    note = text_box.get(1.0, END)
-    with open("notes.txt", "a") as file:
-        file.write(note + "\n")
-    text_box.delete(1.0, END)
+    note = note_entry.get(1.0, "end-1c")
+    if note:
+        with open("notes.txt", "a", encoding="utf-8") as f:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"{note} ({timestamp})\n")
+        note_entry.delete(1.0, "end")
+        messagebox.showinfo("Note Taker", "Note has been saved.")
+    else:
+        messagebox.showerror("Note Taker", "Cannot save empty note.")
 
-# create a function to view the saved notes
+
 def view_notes():
-    with open("notes.txt", "r") as file:
-        notes = file.read()
-    notes_window = Toplevel(root)
-    notes_window.title("Saved Notes")
-    notes_text = Text(notes_window, height=10, width=50)
-    notes_text.pack()
-    notes_text.insert(END, notes)
+    try:
+        with open("notes.txt", "r", encoding="utf-8") as f:
+            notes = [line.strip() for line in f.readlines()]
+            if notes:
+                # create new window
+                view_window = tk.Toplevel(root)
+                view_window.title("View Notes")
+                view_window.geometry("400x300")
 
-# create the GUI
-root = Tk()
-root.title("Note Taking App")
+                # create treeview to display notes
+                notes_treeview = ttk.Treeview(view_window, columns=("timestamp"))
+                notes_treeview.heading("#0", text="Note")
+                notes_treeview.heading("timestamp", text="Timestamp")
+                notes_treeview.column("timestamp", width=150)
+                notes_treeview.pack(fill="both", expand=True)
 
-# create a text box for the user to input their note
-text_box = Text(root, height=10, width=50)
-text_box.pack()
+                # insert notes into treeview
+                for note in notes:
+                    note_text, timestamp = note.split(" (")
+                    timestamp = timestamp[:-1]
+                    notes_treeview.insert("", "end", text=note_text, values=timestamp)
+                    notes_treeview.item(notes_treeview.get_children()[-1], open=True)
+            else:
+                messagebox.showwarning("Note Taker", "No notes found.")
+    except FileNotFoundError:
+        messagebox.showwarning("Note Taker", "No notes found.")
 
-# create a save button that saves the note to a file when clicked
-save_button = Button(root, text="Save", command=save_note)
-save_button.pack()
 
-# create a view button that opens a new window with the saved notes
-view_button = Button(root, text="View Notes", command=view_notes)
-view_button.pack()
+root = tk.Tk()
+root.title("Note Taker")
+root.geometry("400x300")
 
-# start the main loop of the program
+# create label and entry for note input
+note_label = tk.Label(root, text="Enter note:")
+note_label.pack()
+note_entry = tk.Text(root, height=5)
+note_entry.pack()
+
+# create save and view buttons
+save_button = tk.Button(root, text="Save Note", command=save_note)
+save_button.pack(pady=10)
+view_button = tk.Button(root, text="View Notes", command=view_notes)
+view_button.pack(pady=10)
+
 root.mainloop()
