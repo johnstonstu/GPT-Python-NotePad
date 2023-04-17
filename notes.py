@@ -1,64 +1,69 @@
-import tkinter as tk
+from tkinter import *
 from tkinter import ttk
-from tkinter import messagebox
 from datetime import datetime
+
+notes = []
 
 
 def save_note():
-    note = note_entry.get(1.0, "end-1c")
-    if note:
-        with open("notes.txt", "a", encoding="utf-8") as f:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            f.write(f"{note} ({timestamp})\n")
-        note_entry.delete(1.0, "end")
-        messagebox.showinfo("Note Taker", "Note has been saved.")
-    else:
-        messagebox.showerror("Note Taker", "Cannot save empty note.")
+    note = note_entry.get(1.0, END)
+    notes.append((note, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    note_entry.delete(1.0, END)
 
 
 def view_notes():
-    try:
-        with open("notes.txt", "r", encoding="utf-8") as f:
-            notes = [line.strip() for line in f.readlines()]
-            if notes:
-                # create new window
-                view_window = tk.Toplevel(root)
-                view_window.title("View Notes")
-                view_window.geometry("400x300")
+    notes_window = Toplevel(root)
+    notes_window.title("Saved Notes")
+    notes_window.geometry("500x400")
 
-                # create treeview to display notes
-                notes_treeview = ttk.Treeview(view_window, columns=("timestamp"))
-                notes_treeview.heading("#0", text="Note")
-                notes_treeview.heading("timestamp", text="Timestamp")
-                notes_treeview.column("timestamp", width=150)
-                notes_treeview.pack(fill="both", expand=True)
+    notes_treeview = ttk.Treeview(notes_window)
+    notes_treeview.pack(expand=YES, fill=BOTH)
 
-                # insert notes into treeview
-                for note in notes:
-                    note_text, timestamp = note.split(" (")
-                    timestamp = timestamp[:-1]
-                    notes_treeview.insert("", "end", text=note_text, values=timestamp)
-                    notes_treeview.item(notes_treeview.get_children()[-1], open=True)
-            else:
-                messagebox.showwarning("Note Taker", "No notes found.")
-    except FileNotFoundError:
-        messagebox.showwarning("Note Taker", "No notes found.")
+    notes_treeview["columns"] = ("note", "timestamp")
+    notes_treeview.column("#0", width=0, stretch=NO)
+    notes_treeview.column("note", anchor=W, width=400)
+    notes_treeview.column("timestamp", anchor=W, width=100)
 
+    notes_treeview.heading("#0", text="", anchor=W)
+    notes_treeview.heading("note", text="Note", anchor=W)
+    notes_treeview.heading("timestamp", text="Timestamp", anchor=W)
 
-root = tk.Tk()
+    for i, note in enumerate(notes):
+        notes_treeview.insert(parent="", index=i, text="", values=(note[0], note[1]))
+
+    def edit_note():
+        selected_item = notes_treeview.selection()
+        if selected_item:
+            item_text = notes_treeview.item(selected_item, "values")[0]
+            edit_window = Toplevel(notes_window)
+            edit_window.title("Edit Note")
+            edit_window.geometry("500x400")
+
+            edit_note_entry = Text(edit_window, wrap=WORD)
+            edit_note_entry.pack(expand=YES, fill=BOTH)
+            edit_note_entry.insert(INSERT, item_text)
+
+            def save_edited_note():
+                edited_note = edit_note_entry.get(1.0, END)
+                notes_treeview.item(selected_item, values=(edited_note, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                edit_window.destroy()
+
+            edit_note_button = Button(edit_window, text="Save", command=save_edited_note)
+            edit_note_button.pack()
+
+    edit_note_button = Button(notes_window, text="Edit", command=edit_note)
+    edit_note_button.pack()
+
+root = Tk()
 root.title("Note Taker")
-root.geometry("400x300")
 
-# create label and entry for note input
-note_label = tk.Label(root, text="Enter note:")
-note_label.pack()
-note_entry = tk.Text(root, height=5)
-note_entry.pack()
+note_entry = Text(root, wrap=WORD)
+note_entry.pack(expand=YES, fill=BOTH)
 
-# create save and view buttons
-save_button = tk.Button(root, text="Save Note", command=save_note)
-save_button.pack(pady=10)
-view_button = tk.Button(root, text="View Notes", command=view_notes)
-view_button.pack(pady=10)
+save_button = Button(root, text="Save", command=save_note)
+save_button.pack()
+
+view_notes_button = Button(root, text="View Notes", command=view_notes)
+view_notes_button.pack()
 
 root.mainloop()
